@@ -1,0 +1,33 @@
+{
+  "name": "helloasso-tournoitt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "echo \"No tests configured yet\" && exit 0",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@headlessui/vue": "^1.7.23",
+    "@nuxthub/core": "^0.10.5",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "chart.js": "^4.5.1",
+    "nuxt": "^3.21.0",
+    "vue": "^3.5.27",
+    "vue-chartjs": "^5.3.3",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.13.0",
+    "@types/node": "^25.0.10",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.3"
+  }
+}

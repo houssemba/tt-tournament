@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: Tournament Registration Display API
+  description: |
+    Internal API for the tournament registration display platform.
+    Server-side endpoints for fetching players, statistics, and cache management.
+  version: 1.0.0
+  contact:
+    name: Tournament TT
+
+servers:
+  - url: /api
+    description: Nuxt server routes
+
+paths:
+  /players:
+    get:
+      summary: Get all registered players
+      description: |
+        Retrieves all tournament registrations organized by category.
+        Data is cached for 10 minutes. Returns cached data with warning
+        if HelloAsso API is unavailable.
+      operationId: getPlayers
+      tags:
+        - Players
+      responses:
+        '200':
+          description: Player list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayersResponse'
+              examples:
+                success:
+                  summary: Successful response with players
+                  value:
+                    players:
+                      - id: "12345-0"
+                        firstName: "Jean"
+                        lastName: "Dupont"
+                        licenseNumber: "123456"
+                        club: "Club TT Example"
+                        clubCode: "12345678"
+                        category: "500-999"
+                        registrationDate: "2026-01-15T10:30:00Z"
+                        email: "jean.dupont@email.com"
+                    lastFetch: "2026-01-22T14:00:00Z"
+                    fromCache: true
+                stale:
+                  summary: Stale data with warning
+                  value:
+                    players: []
+                    lastFetch: "2026-01-22T12:00:00Z"
+                    fromCache: true
+                    warning: "Données potentiellement obsolètes. Dernière mise à jour il y a 2 heures."
+        '500':
+          description: Server error - API unavailable and no cache
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stats:
+    get:
+      summary: Get tournament statistics
+      description: |
+        Retrieves aggregated statistics including player counts by category,
+        top clubs, and registration timeline.
+      operationId: getStats
+      tags:
+        - Statistics
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+              example:
+                stats:
+                  totalPlayers: 87
+                  byCategory:
+                    '500-799': 15
+                    '500-999': 22
+                    '500-1199': 18
+                    '500-1399': 14
+                    '500-1799': 10
+                    'tc-feminin': 8
+                  byClub:
+                    - club: "Club TT Example"
+                      count: 12
+                    - club: "AS Ping"
+                      count: 8
+                  registrationTimeline:
+                    - date: "2026-01-10"
+                      count: 15
+                    - date: "2026-01-11"
+                      count: 23
+                  computedAt: "2026-01-22T14:00:00Z"
+                fromCache: false
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /refresh:
+    post:
+      summary: Manually refresh data
+      description: |
+        Invalidates the cache and fetches fresh data from HelloAsso.
+        Rate limited to prevent API quota exhaustion.
+      operationId: refreshData
+      tags:
+        - Cache
+      responses:
+        '200':
+          description: Refresh completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+              example:
+                success: true
+                playerCount: 87
+                refreshedAt: "2026-01-22T14:05:00Z"
+        '429':
+          description: Rate limited - too many refresh requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Veuillez attendre avant de rafraîchir à nouveau."
+                code: "RATE_LIMITED"
+        '500':
+          description: Refresh failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+              example:
+                success: false
+                playerCount: 0
+                refreshedAt: "2026-01-22T14:05:00Z"
+                error: "Impossible de contacter HelloAsso. Veuillez réessayer."
+
+components:
+  schemas:
+    Player:
+      type: object
+      required:
+        - id
+        - firstName
+        - lastName
+        - licenseNumber
+        - club
+        - category
+        - registrationDate
+      properties:
+        id:
+          type: string
+          description: Unique identifier (HelloAsso order ID + item index)
+          example: "12345-0"
+        firstName:
+          type: string
+          description: Player's first name
+          example: "Jean"
+        lastName:
+          type: string
+          description: Player's last name
+          example: "Dupont"
+        licenseNumber:
+          type: string
+          pattern: '^\d{6,7}$'
+          description: FFTT license number (6-7 digits)
+          example: "123456"
+        club:
+          type: string
+          description: Club name from FFTT or "Club inconnu"
+          example: "Club TT Example"
+        clubCode:
+          type: string
+          nullable: true
+          description: FFTT club code
+          example: "12345678"
+        category:
+          $ref: '#/components/schemas/CategoryId'
+        registrationDate:
+          type: string
+          format: date-time
+          description: Registration timestamp (ISO 8601)
+          example: "2026-01-15T10:30:00Z"
+        email:
+          type: string
+          format: email
+          description: Optional email address
+          example: "jean.dupont@email.com"
+
+    CategoryId:
+      type: string
+      enum:
+        - '500-799'
+        - '500-999'
+        - '500-1199'
+        - '500-1399'
+        - '500-1799'
+        - 'tc-feminin'
+      description: Tournament category identifier
+
+    TournamentStats:
+      type: object
+      required:
+        - totalPlayers
+        - byCategory
+        - byClub
+        - registrationTimeline
+        - computedAt
+      properties:
+        totalPlayers:
+          type: integer
+          minimum: 0
+          description: Total registered players
+          example: 87
+        byCategory:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Player count per category
+        byClub:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubCount'
+          description: Top 10 clubs by player count
+        registrationTimeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyCount'
+          description: Daily registration counts
+        computedAt:
+          type: string
+          format: date-time
+          description: Statistics computation timestamp
+
+    ClubCount:
+      type: object
+      required:
+        - club
+        - count
+      properties:
+        club:
+          type: string
+          example: "Club TT Example"
+        count:
+          type: integer
+          minimum: 1
+          example: 12
+
+    DailyCount:
+      type: object
+      required:
+        - date
+        - count
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-01-15"
+        count:
+          type: integer
+          minimum: 1
+          example: 15
+
+    PlayersResponse:
+      type: object
+      required:
+        - players
+        - lastFetch
+        - fromCache
+      properties:
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        lastFetch:
+          type: string
+          format: date-time
+          description: Last HelloAsso fetch timestamp
+        fromCache:
+          type: boolean
+          description: Whether data is from cache
+        warning:
+          type: string
+          description: Warning message for stale/incomplete data
+
+    StatsResponse:
+      type: object
+      required:
+        - stats
+        - fromCache
+      properties:
+        stats:
+          $ref: '#/components/schemas/TournamentStats'
+        fromCache:
+          type: boolean
+
+    RefreshResponse:
+      type: object
+      required:
+        - success
+        - playerCount
+        - refreshedAt
+      properties:
+        success:
+          type: boolean
+        playerCount:
+          type: integer
+          minimum: 0
+        refreshedAt:
+          type: string
+          format: date-time
+        error:
+          type: string
+          description: Error message if refresh failed
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - API_UNAVAILABLE
+            - RATE_LIMITED
+            - INTERNAL_ERROR
+
+tags:
+  - name: Players
+    description: Player registration data
+  - name: Statistics
+    description: Aggregate statistics
+  - name: Cache
+    description: Cache management

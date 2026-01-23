@@ -1,0 +1,13 @@
+name = "helloasso-tournoitt"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = ".output/public"
+
+# KV namespace for caching
+[[kv_namespaces]]
+binding = "KV"
+id = "your_kv_namespace_id"
+preview_id = "your_preview_kv_namespace_id"
+
+# Environment variables (set in Cloudflare dashboard for production)
+[vars]
+CACHE_TTL = "600"

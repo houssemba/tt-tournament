@@ -1,0 +1,157 @@
+// HelloAsso OAuth2 client and API utilities
+
+import type {
+  HelloAssoTokenResponse,
+  HelloAssoPaginatedResponse,
+  HelloAssoOrder,
+} from '~/types/helloasso'
+import { ApiError, withRetry } from './errors'
+import { getFromCache, setInCache, CACHE_KEYS } from './cache'
+
+const HELLOASSO_AUTH_URL = 'https://api.helloasso.com/oauth2/token'
+const HELLOASSO_API_BASE = 'https://api.helloasso.com/v5'
+
+interface TokenCache {
+  accessToken: string
+  expiresAt: number
+}
+
+let tokenCache: TokenCache | null = null
+
+/**
+ * Get an OAuth2 access token from HelloAsso
+ * Uses client credentials flow
+ */
+async function getAccessToken(): Promise<string> {
+  const config = useRuntimeConfig()
+
+  // Check in-memory cache first
+  if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
+    return tokenCache.accessToken
+  }
+
+  // Check KV cache
+  const cachedToken = await getFromCache<TokenCache>(CACHE_KEYS.HELLOASSO_TOKEN)
+  if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
+    tokenCache = cachedToken
+    return cachedToken.accessToken
+  }
+
+  // Request new token
+  const response = await withRetry(async () => {
+    const res = await fetch(HELLOASSO_AUTH_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: config.helloassoClientId,
+        client_secret: config.helloassoClientSecret,
+      }),
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      if (res.status === 401) {
+        throw ApiError.unauthorized(`HelloAsso authentication failed: ${errorText}`)
+      }
+      if (res.status === 429) {
+        throw ApiError.rateLimited('HelloAsso rate limit exceeded')
+      }
+      throw new ApiError(`HelloAsso auth error: ${errorText}`, res.status, 'HELLOASSO_AUTH_ERROR', true)
+    }
+
+    return res.json() as Promise<HelloAssoTokenResponse>
+  })
+
+  // Cache the token
+  const expiresAt = Date.now() + (response.expires_in - 300) * 1000 // 5 min buffer
+  tokenCache = {
+    accessToken: response.access_token,
+    expiresAt,
+  }
+
+  // Also cache in KV for persistence
+  await setInCache(CACHE_KEYS.HELLOASSO_TOKEN, tokenCache, response.expires_in - 300)
+
+  return response.access_token
+}
+
+/**
+ * Make an authenticated request to HelloAsso API
+ */
+async function helloassoFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const accessToken = await getAccessToken()
+
+  const response = await withRetry(async () => {
+    const res = await fetch(`${HELLOASSO_API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      const errorText = await res.text()
+      if (res.status === 401) {
+        // Token might be expired, clear cache
+        tokenCache = null
+        throw ApiError.unauthorized(`HelloAsso API unauthorized: ${errorText}`)
+      }
+      if (res.status === 404) {
+        throw ApiError.notFound(`HelloAsso resource not found: ${endpoint}`)
+      }
+      if (res.status === 429) {
+        throw ApiError.rateLimited('HelloAsso rate limit exceeded')
+      }
+      throw new ApiError(`HelloAsso API error: ${errorText}`, res.status, 'HELLOASSO_API_ERROR', true)
+    }
+
+    return res.json() as Promise<T>
+  })
+
+  return response
+}
+
+/**
+ * Get all orders from a HelloAsso form
+ * Handles pagination automatically
+ */
+export async function getOrders(): Promise<HelloAssoOrder[]> {
+  const config = useRuntimeConfig()
+  const orgSlug = config.helloassoOrganizationSlug
+  const formSlug = config.helloassoFormSlug
+
+  if (!orgSlug || !formSlug) {
+    throw ApiError.badRequest('HelloAsso organization or form slug not configured')
+  }
+
+  const allOrders: HelloAssoOrder[] = []
+  let continuationToken: string | undefined
+  let pageIndex = 1
+  const pageSize = 100
+
+  do {
+    const params = new URLSearchParams({
+      pageSize: pageSize.toString(),
+      pageIndex: pageIndex.toString(),
+      ...(continuationToken && { continuationToken }),
+    })
+
+    const response = await helloassoFetch<HelloAssoPaginatedResponse<HelloAssoOrder>>(
+      `/organizations/${orgSlug}/forms/Event/${formSlug}/orders?${params}`
+    )
+
+    allOrders.push(...response.data)
+    continuationToken = response.pagination.continuationToken
+    pageIndex++
+  } while (continuationToken)
+
+  return allOrders
+}
