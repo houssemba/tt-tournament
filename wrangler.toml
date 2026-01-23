@@ -5,8 +5,8 @@ pages_build_output_dir = ".output/public"
 # KV namespace for caching
 [[kv_namespaces]]
 binding = "KV"
-id = "your_kv_namespace_id"
-preview_id = "your_preview_kv_namespace_id"
+id = "87626bd6044e4e6a977e2ae1a5f6f07a"
+preview_id = "87626bd6044e4e6a977e2ae1a5f6f07a"
 
 # Environment variables (set in Cloudflare dashboard for production)
 [vars]
