@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "echo \"No tests configured yet\" && exit 0",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "deploy": "wrangler pages deploy .output/public"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
