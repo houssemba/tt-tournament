@@ -14,6 +14,8 @@ id = "87626bd6044e4e6a977e2ae1a5f6f07a"
 # Environment variables
 [vars]
 CACHE_TTL = "600"
+HELLOASSO_ORGANIZATION_SLUG=tennis-de-table-de-haute-vilaine
+HELLOASSO_FORM_SLUG=tournoi-regional-tennis-de-table-haute-vilaine-a-acigne
 
 # Secrets (set via: wrangler secret put HELLOASSO_CLIENT_ID)
 # HELLOASSO_CLIENT_ID
