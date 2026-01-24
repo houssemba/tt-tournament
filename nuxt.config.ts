@@ -29,8 +29,6 @@ export default defineNuxtConfig({
     helloassoClientSecret: process.env.HELLOASSO_CLIENT_SECRET || '',
     helloassoOrganizationSlug: process.env.HELLOASSO_ORGANIZATION_SLUG || '',
     helloassoFormSlug: process.env.HELLOASSO_FORM_SLUG || '',
-    ffttApiId: process.env.FFTT_API_ID || '',
-    ffttApiKey: process.env.FFTT_API_KEY || '',
     cacheTtl: parseInt(process.env.CACHE_TTL || '600', 10),
   },
 })

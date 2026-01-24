@@ -18,20 +18,6 @@ const categoryColors = [
   '#EC4899', // pink-500
 ]
 
-// Colors for future use with club chart gradients
-const _clubColors = [
-  '#1E40AF', // blue-800
-  '#1E3A8A', // blue-900
-  '#1E293B', // slate-800
-  '#334155', // slate-700
-  '#475569', // slate-600
-  '#64748B', // slate-500
-  '#94A3B8', // slate-400
-  '#CBD5E1', // slate-300
-  '#E2E8F0', // slate-200
-  '#F1F5F9', // slate-100
-]
-
 // Category pie chart data
 const categoryChartData = computed(() => {
   if (!stats.value) return null
@@ -44,23 +30,6 @@ const categoryChartData = computed(() => {
         backgroundColor: categoryColors,
         borderWidth: 2,
         borderColor: '#ffffff',
-      },
-    ],
-  }
-})
-
-// Club bar chart data
-const clubChartData = computed(() => {
-  if (!stats.value) return null
-
-  return {
-    labels: stats.value.byClub.map(c => c.club),
-    datasets: [
-      {
-        label: 'Joueurs',
-        data: stats.value.byClub.map(c => c.count),
-        backgroundColor: '#3B82F6',
-        borderRadius: 4,
       },
     ],
   }
@@ -181,26 +150,14 @@ useHead({
           :value="stats.totalPlayers"
         />
 
-        <!-- Charts grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Category pie chart -->
-          <ChartContainer
-            v-if="categoryChartData"
-            type="pie"
-            :data="categoryChartData"
-            title="Répartition par catégorie"
-            :aspect-ratio="1.5"
-          />
-
-          <!-- Club bar chart -->
-          <ChartContainer
-            v-if="clubChartData"
-            type="bar"
-            :data="clubChartData"
-            title="Top 10 des clubs"
-            :aspect-ratio="1.5"
-          />
-        </div>
+        <!-- Category pie chart -->
+        <ChartContainer
+          v-if="categoryChartData"
+          type="pie"
+          :data="categoryChartData"
+          title="Répartition par catégorie"
+          :aspect-ratio="1.5"
+        />
 
         <!-- Timeline chart (full width) -->
         <ChartContainer
@@ -217,7 +174,7 @@ useHead({
     <footer class="bg-white border-t border-gray-200 mt-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <p class="text-center text-sm text-gray-500">
-          Données issues de HelloAsso et de la FFTT
+          Données issues de HelloAsso
         </p>
       </div>
     </footer>

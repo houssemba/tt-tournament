@@ -2,11 +2,6 @@
 
 import type { CategoryId } from './player'
 
-export interface ClubCount {
-  club: string
-  count: number
-}
-
 export interface DailyCount {
   date: string
   count: number
@@ -21,7 +16,6 @@ export interface CategoryCount {
 export interface TournamentStats {
   totalPlayers: number
   byCategory: CategoryCount[]
-  byClub: ClubCount[]
   registrationTimeline: DailyCount[]
   lastUpdated: Date
 }

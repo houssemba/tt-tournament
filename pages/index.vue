@@ -134,7 +134,7 @@ useHead({
     <footer class="bg-white border-t border-gray-200 mt-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <p class="text-center text-sm text-gray-500">
-          Données issues de HelloAsso et de la FFTT
+          Données issues de HelloAsso
         </p>
       </div>
     </footer>

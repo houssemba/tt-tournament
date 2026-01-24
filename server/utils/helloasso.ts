@@ -97,6 +97,7 @@ async function helloassoFetch<T>(
       },
     })
 
+
     if (!res.ok) {
       const errorText = await res.text()
       if (res.status === 401) {
@@ -134,24 +135,34 @@ export async function getOrders(): Promise<HelloAssoOrder[]> {
 
   const allOrders: HelloAssoOrder[] = []
   let continuationToken: string | undefined
-  let pageIndex = 1
   const pageSize = 100
+  const maxPages = 50 // Safety limit
 
-  do {
+  for (let page = 0; page < maxPages; page++) {
     const params = new URLSearchParams({
       pageSize: pageSize.toString(),
-      pageIndex: pageIndex.toString(),
-      ...(continuationToken && { continuationToken }),
     })
+
+    // Use continuationToken for subsequent pages, pageIndex only for first page
+    if (continuationToken) {
+      params.set('continuationToken', continuationToken)
+    } else {
+      params.set('pageIndex', '1')
+    }
 
     const response = await helloassoFetch<HelloAssoPaginatedResponse<HelloAssoOrder>>(
       `/organizations/${orgSlug}/forms/Event/${formSlug}/orders?${params}`
     )
 
     allOrders.push(...response.data)
+
+    // Stop if no more pages
+    if (!response.pagination.continuationToken || response.data.length === 0) {
+      break
+    }
+
     continuationToken = response.pagination.continuationToken
-    pageIndex++
-  } while (continuationToken)
+  }
 
   return allOrders
 }

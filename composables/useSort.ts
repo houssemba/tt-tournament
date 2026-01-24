@@ -2,7 +2,7 @@
 
 import type { Player } from '~/types/player'
 
-export type SortKey = 'lastName' | 'firstName' | 'club' | 'officialPoints' | 'registrationDate'
+export type SortKey = 'lastName' | 'firstName' | 'registrationDate'
 export type SortDirection = 'asc' | 'desc'
 
 export function useSort(initialKey: SortKey = 'lastName', initialDirection: SortDirection = 'asc') {
@@ -34,18 +34,6 @@ export function useSort(initialKey: SortKey = 'lastName', initialDirection: Sort
         case 'firstName':
           comparison = a.firstName.localeCompare(b.firstName, 'fr')
           break
-        case 'club': {
-          const clubA = a.club ?? ''
-          const clubB = b.club ?? ''
-          comparison = clubA.localeCompare(clubB, 'fr')
-          break
-        }
-        case 'officialPoints': {
-          const pointsA = a.officialPoints ?? 0
-          const pointsB = b.officialPoints ?? 0
-          comparison = pointsA - pointsB
-          break
-        }
         case 'registrationDate': {
           const dateA = new Date(a.registrationDate).getTime()
           const dateB = new Date(b.registrationDate).getTime()

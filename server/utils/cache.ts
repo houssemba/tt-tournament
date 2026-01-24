@@ -102,5 +102,4 @@ export const CACHE_KEYS = {
   PLAYERS: 'players',
   STATS: 'stats',
   HELLOASSO_TOKEN: 'helloasso_token',
-  ffttPlayer: (licenseNumber: string) => `fftt_player_${licenseNumber}`,
 }

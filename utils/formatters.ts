@@ -64,27 +64,3 @@ export function capitalizeFirstLetter(str: string): string {
   if (!str) return ''
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
-
-/**
- * Format points for display
- * @param points - The points value (can be null)
- * @returns Formatted points string
- */
-export function formatPoints(points: number | null): string {
-  if (points === null || points === undefined) {
-    return 'N/A'
-  }
-  return points.toString()
-}
-
-/**
- * Format club name for display
- * @param club - The club name (can be null)
- * @returns Formatted club string
- */
-export function formatClub(club: string | null): string {
-  if (!club) {
-    return 'Club inconnu'
-  }
-  return club
-}
