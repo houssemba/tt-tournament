@@ -11,6 +11,3 @@ preview_id = "87626bd6044e4e6a977e2ae1a5f6f07a"
 # Environment variables (set in Cloudflare dashboard for production)
 [vars]
 CACHE_TTL = "600"
-
-[triggers]
-crons = ["*/1 * * * *"]

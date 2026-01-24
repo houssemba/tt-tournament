@@ -29,13 +29,6 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'cloudflare-pages',
-    experimental: {
-      tasks: true,
-    },
-    scheduledTasks: {
-      // Run every minute (Cloudflare minimum interval)
-      '*/1 * * * *': ['refresh-cache'],
-    },
   },
 
   typescript: {

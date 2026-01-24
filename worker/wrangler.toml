@@ -1,0 +1,22 @@
+name = "helloasso-refresh-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Cron trigger - runs every minute
+[triggers]
+crons = ["*/1 * * * *"]
+
+# KV namespace binding - same namespace as the Pages app
+[[kv_namespaces]]
+binding = "KV"
+id = "87626bd6044e4e6a977e2ae1a5f6f07a"
+
+# Environment variables
+[vars]
+CACHE_TTL = "600"
+
+# Secrets (set via: wrangler secret put HELLOASSO_CLIENT_ID)
+# HELLOASSO_CLIENT_ID
+# HELLOASSO_CLIENT_SECRET
+# HELLOASSO_ORGANIZATION_SLUG
+# HELLOASSO_FORM_SLUG
