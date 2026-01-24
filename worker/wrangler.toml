@@ -20,3 +20,8 @@ CACHE_TTL = "600"
 # HELLOASSO_CLIENT_SECRET
 # HELLOASSO_ORGANIZATION_SLUG
 # HELLOASSO_FORM_SLUG
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
