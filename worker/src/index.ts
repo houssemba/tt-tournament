@@ -128,7 +128,27 @@ async function hashOrderId(orderId: number): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-async function getAccessToken(env: Env): Promise<string> {
+interface TokenCache {
+  accessToken: string
+  expiresAt: number
+}
+
+async function getAccessToken(env: Env, forceRefresh = false): Promise<string> {
+  const TOKEN_KEY = 'helloasso_token'
+
+  // Try to get cached token
+  if (!forceRefresh) {
+    try {
+      const cached = await env.KV.get<TokenCache>(TOKEN_KEY, 'json')
+      if (cached && cached.expiresAt > Date.now() + 60000) {
+        return cached.accessToken
+      }
+    } catch {
+      // Ignore cache errors
+    }
+  }
+
+  // Get fresh token
   const response = await fetch(HELLOASSO_AUTH_URL, {
     method: 'POST',
     headers: {
@@ -146,6 +166,21 @@ async function getAccessToken(env: Env): Promise<string> {
   }
 
   const data = await response.json() as HelloAssoTokenResponse
+
+  // Cache the token
+  const tokenCache: TokenCache = {
+    accessToken: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 300) * 1000,
+  }
+
+  try {
+    await env.KV.put(TOKEN_KEY, JSON.stringify(tokenCache), {
+      expirationTtl: data.expires_in - 300,
+    })
+  } catch {
+    // Ignore cache errors
+  }
+
   return data.access_token
 }
 
@@ -179,7 +214,7 @@ async function getItems(env: Env, accessToken: string, retry = true): Promise<He
 
     // Retry with fresh token on 401/403
     if ((response.status === 401 || response.status === 403) && retry) {
-      const newToken = await getAccessToken(env)
+      const newToken = await getAccessToken(env, true)
       return getItems(env, newToken, false)
     }
 
