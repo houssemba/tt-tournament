@@ -274,8 +274,25 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
   return players
 }
 
+function validateEnv(env: Env): void {
+  const required = [
+    'HELLOASSO_CLIENT_ID',
+    'HELLOASSO_CLIENT_SECRET',
+    'HELLOASSO_ORGANIZATION_SLUG',
+    'HELLOASSO_FORM_SLUG',
+  ] as const
+
+  const missing = required.filter(key => !env[key])
+
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variables: ${missing.join(', ')}`)
+  }
+}
+
 async function refreshCache(env: Env): Promise<string> {
   console.log('[Worker] Refreshing players cache...')
+
+  validateEnv(env)
 
   const accessToken = await getAccessToken(env)
   const items = await getItems(env, accessToken)
