@@ -3,6 +3,18 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
 
+  app: {
+    head: {
+      title: 'Tournoi Haute Vilaine - Acigné',
+      meta: [
+        { name: 'description', content: 'Tournoi régional de tennis de table Haute Vilaine - Acigné' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      ],
+    },
+  },
+
   modules: [
     '@nuxthub/core',
     '@nuxtjs/tailwindcss',
@@ -17,6 +29,13 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'cloudflare-pages',
+    experimental: {
+      tasks: true,
+    },
+    scheduledTasks: {
+      // Run every minute (Cloudflare minimum interval)
+      '*/1 * * * *': ['refresh-cache'],
+    },
   },
 
   typescript: {

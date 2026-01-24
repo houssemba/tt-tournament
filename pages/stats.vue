@@ -75,9 +75,12 @@ const timelineChartData = computed(() => {
 })
 
 useHead({
-  title: 'Statistiques - Tournoi',
+  title: 'Statistiques - Tournoi Haute Vilaine Acigné',
   meta: [
-    { name: 'description', content: 'Statistiques des inscriptions au tournoi de tennis de table' },
+    { name: 'description', content: 'Statistiques du Tournoi régional de tennis de table Haute Vilaine - Acigné' },
+  ],
+  link: [
+    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
   ],
 })
 </script>
@@ -88,16 +91,23 @@ useHead({
     <header class="bg-white shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">
-              Statistiques
-            </h1>
-            <p
-              v-if="lastFetch"
-              class="mt-1 text-sm text-gray-500"
+          <div class="flex items-center gap-4">
+            <img
+              src="/logo.png"
+              alt="Logo TTHV"
+              class="h-14 w-14 sm:h-16 sm:w-16 object-contain"
             >
-              Dernière mise à jour : {{ formatDateTime(lastFetch) }}
-            </p>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
+                Statistiques
+              </h1>
+              <p
+                v-if="lastFetch"
+                class="mt-1 text-sm text-gray-500"
+              >
+                Dernière mise à jour : {{ formatDateTime(lastFetch) }}
+              </p>
+            </div>
           </div>
 
           <NuxtLink
@@ -202,9 +212,9 @@ useHead({
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 mt-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <p class="text-center text-sm text-gray-500">
-          Données issues de HelloAsso
-        </p>
+        <a href="mailto:contact@tt-hautevilaine.com" class="block text-center text-sm text-gray-500 hover:text-primary-600 transition-colors">
+          Made with <span class="text-red-500">&#10084;</span> by Houssem for the TTHV
+        </a>
       </div>
     </footer>
   </div>

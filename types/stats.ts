@@ -38,9 +38,3 @@ export interface StatsResponse {
   fromCache: boolean
   lastUpdated: Date
 }
-
-export interface RefreshResponse {
-  success: boolean
-  message: string
-  timestamp: Date
-}

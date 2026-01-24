@@ -20,6 +20,7 @@ interface ColumnConfig {
 }
 
 const columns: ColumnConfig[] = [
+  { key: 'licenseNumber', label: 'Licence' },
   { key: 'lastName', label: 'Nom' },
   { key: 'club', label: 'Club' },
   { key: 'officialPoints', label: 'Points' },
@@ -79,6 +80,11 @@ function getSortIcon(key: SortKey): string {
           :key="player.id"
           class="hover:bg-gray-50"
         >
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="text-sm font-mono text-gray-600">
+              {{ player.licenseNumber || 'N/A' }}
+            </span>
+          </td>
           <td class="px-4 py-3 whitespace-nowrap">
             <span class="text-sm font-medium text-gray-900">
               {{ formatPlayerName(player.firstName, player.lastName) }}

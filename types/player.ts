@@ -11,10 +11,9 @@ export interface Category {
 
 export interface Player {
   id: string
+  licenseNumber: string
   firstName: string
   lastName: string
-  email?: string
-  licenseNumber: string
   club: string | null
   officialPoints: number | null
   categories: CategoryId[]

@@ -23,9 +23,12 @@ const sortedCategories = computed(() => {
 })
 
 useHead({
-  title: 'Inscriptions Tournoi',
+  title: 'Inscriptions - Tournoi Haute Vilaine Acigné (2 Mai 2026)',
   meta: [
-    { name: 'description', content: 'Visualisez les inscriptions au tournoi de tennis de table par catégorie' },
+    { name: 'description', content: 'Inscriptions au Tournoi régional de tennis de table Haute Vilaine - Acigné' },
+  ],
+  link: [
+    { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
   ],
 })
 </script>
@@ -36,18 +39,23 @@ useHead({
     <header class="bg-white shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">
-              Inscriptions Tournoi
-            </h1>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ totalPlayers }} joueur{{ totalPlayers !== 1 ? 's' : '' }} inscrit{{ totalPlayers !== 1 ? 's' : '' }}
-            </p>
+          <div class="flex items-center gap-4">
+            <img
+              src="/logo.png"
+              alt="Logo TTHV"
+              class="h-14 w-14 sm:h-16 sm:w-16 object-contain"
+            >
+            <div>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900">
+                Tournoi Haute Vilaine - Acigné (2 Mai 2026)
+              </h1>
+              <p class="mt-1 text-sm text-gray-500">
+                {{ totalPlayers }} joueur{{ totalPlayers !== 1 ? 's' : '' }} inscrit{{ totalPlayers !== 1 ? 's' : '' }}
+              </p>
+            </div>
           </div>
 
           <div class="flex items-center gap-3">
-            <RefreshButton :loading="loading" @refresh="fetchPlayers" />
-
             <NuxtLink
               to="/stats"
               class="btn btn-secondary text-sm"
@@ -133,9 +141,9 @@ useHead({
     <!-- Footer -->
     <footer class="bg-white border-t border-gray-200 mt-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <p class="text-center text-sm text-gray-500">
-          Données issues de HelloAsso
-        </p>
+        <a href="mailto:contact@tt-hautevilaine.com" class="block text-center text-sm text-gray-500 hover:text-primary-600 transition-colors">
+          Made with <span class="text-red-500">&#10084;</span> by Houssem for the TTHV
+        </a>
       </div>
     </footer>
   </div>

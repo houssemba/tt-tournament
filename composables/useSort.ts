@@ -2,7 +2,7 @@
 
 import type { Player } from '~/types/player'
 
-export type SortKey = 'lastName' | 'firstName' | 'club' | 'officialPoints' | 'registrationDate'
+export type SortKey = 'licenseNumber' | 'lastName' | 'firstName' | 'club' | 'officialPoints' | 'registrationDate'
 export type SortDirection = 'asc' | 'desc'
 
 export function useSort(initialKey: SortKey = 'lastName', initialDirection: SortDirection = 'asc') {
@@ -28,6 +28,9 @@ export function useSort(initialKey: SortKey = 'lastName', initialDirection: Sort
       let comparison = 0
 
       switch (sortKey.value) {
+        case 'licenseNumber':
+          comparison = a.licenseNumber.localeCompare(b.licenseNumber, 'fr')
+          break
         case 'lastName':
           comparison = a.lastName.localeCompare(b.lastName, 'fr')
           break

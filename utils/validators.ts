@@ -37,17 +37,3 @@ export function cleanLicenseNumber(licenseNumber: string): string | null {
   return cleaned
 }
 
-/**
- * Validate an email address
- * @param email - The email to validate
- * @returns true if valid, false otherwise
- */
-export function validateEmail(email: string): boolean {
-  if (!email) {
-    return false
-  }
-
-  // Basic email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
