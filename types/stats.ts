@@ -13,9 +13,15 @@ export interface CategoryCount {
   count: number
 }
 
+export interface ClubCount {
+  club: string
+  count: number
+}
+
 export interface TournamentStats {
   totalPlayers: number
   byCategory: CategoryCount[]
+  byClub: ClubCount[]
   registrationTimeline: DailyCount[]
   lastUpdated: Date
 }

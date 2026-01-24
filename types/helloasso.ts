@@ -6,14 +6,26 @@ export interface HelloAssoCustomField {
   answer: string
 }
 
+export interface HelloAssoItemUser {
+  firstName: string
+  lastName: string
+}
+
 export interface HelloAssoItem {
   id: number
   name: string
   priceCategory: string
-  customFields: HelloAssoCustomField[]
+  customFields?: HelloAssoCustomField[]
   amount: number
   type: string
   state: string
+  user?: HelloAssoItemUser
+  payer?: HelloAssoPayer
+  order?: {
+    id: number
+    date: string
+    formSlug: string
+  }
 }
 
 export interface HelloAssoPayer {

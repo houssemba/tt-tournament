@@ -4,9 +4,10 @@ import type {
   HelloAssoTokenResponse,
   HelloAssoPaginatedResponse,
   HelloAssoOrder,
+  HelloAssoItem,
 } from '~/types/helloasso'
 import { ApiError, withRetry } from './errors'
-import { getFromCache, setInCache, CACHE_KEYS } from './cache'
+import { getFromCache, setInCache, deleteFromCache, CACHE_KEYS } from './cache'
 
 const HELLOASSO_AUTH_URL = 'https://api.helloasso.com/oauth2/token'
 const HELLOASSO_API_BASE = 'https://api.helloasso.com/v5'
@@ -18,24 +19,52 @@ interface TokenCache {
 
 let tokenCache: TokenCache | null = null
 
+interface TokenExpiredError {
+  is401: true
+  errorText: string
+}
+
+function isTokenExpiredError(error: unknown): error is TokenExpiredError {
+  return (
+    error !== null &&
+    typeof error === 'object' &&
+    'is401' in error &&
+    'errorText' in error
+  )
+}
+
+/**
+ * Clear all token caches (in-memory and KV)
+ */
+async function clearTokenCache(): Promise<void> {
+  tokenCache = null
+  await deleteFromCache(CACHE_KEYS.HELLOASSO_TOKEN)
+}
+
 /**
  * Get an OAuth2 access token from HelloAsso
  * Uses client credentials flow
+ * @param forceRefresh - If true, ignores cache and requests a new token
  */
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(forceRefresh: boolean = false): Promise<string> {
   const config = useRuntimeConfig()
 
-  // Check in-memory cache first
-  if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
-    return tokenCache.accessToken
+  if (!forceRefresh) {
+    // Check in-memory cache first
+    if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
+      return tokenCache.accessToken
+    }
+
+    // Check KV cache
+    const cachedToken = await getFromCache<TokenCache>(CACHE_KEYS.HELLOASSO_TOKEN)
+    if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
+      tokenCache = cachedToken
+      return cachedToken.accessToken
+    }
   }
 
-  // Check KV cache
-  const cachedToken = await getFromCache<TokenCache>(CACHE_KEYS.HELLOASSO_TOKEN)
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60000) {
-    tokenCache = cachedToken
-    return cachedToken.accessToken
-  }
+  // Clear any stale cache
+  await clearTokenCache()
 
   // Request new token
   const response = await withRetry(async () => {
@@ -80,30 +109,28 @@ async function getAccessToken(): Promise<string> {
 
 /**
  * Make an authenticated request to HelloAsso API
+ * Automatically retries with a fresh token on 401
  */
 async function helloassoFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const accessToken = await getAccessToken()
+  let accessToken = await getAccessToken()
 
-  const response = await withRetry(async () => {
+  const makeRequest = async (token: string) => {
     const res = await fetch(`${HELLOASSO_API_BASE}${endpoint}`, {
       ...options,
       headers: {
         ...options.headers,
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${token}`,
         Accept: 'application/json',
       },
     })
 
-
     if (!res.ok) {
       const errorText = await res.text()
       if (res.status === 401) {
-        // Token might be expired, clear cache
-        tokenCache = null
-        throw ApiError.unauthorized(`HelloAsso API unauthorized: ${errorText}`)
+        throw { is401: true, errorText }
       }
       if (res.status === 404) {
         throw ApiError.notFound(`HelloAsso resource not found: ${endpoint}`)
@@ -115,9 +142,26 @@ async function helloassoFetch<T>(
     }
 
     return res.json() as Promise<T>
-  })
+  }
 
-  return response
+  try {
+    return await withRetry(() => makeRequest(accessToken))
+  } catch (error) {
+    // If we got a 401, clear cache and retry with a fresh token
+    if (isTokenExpiredError(error)) {
+      await clearTokenCache()
+      accessToken = await getAccessToken(true)
+      try {
+        return await makeRequest(accessToken)
+      } catch (retryError) {
+        if (isTokenExpiredError(retryError)) {
+          throw ApiError.unauthorized(`HelloAsso API unauthorized: ${retryError.errorText}`)
+        }
+        throw retryError
+      }
+    }
+    throw error
+  }
 }
 
 /**
@@ -165,4 +209,53 @@ export async function getOrders(): Promise<HelloAssoOrder[]> {
   }
 
   return allOrders
+}
+
+/**
+ * Get all items from a HelloAsso form
+ * Items include custom fields (unlike orders)
+ * Handles pagination automatically
+ */
+export async function getItems(): Promise<HelloAssoItem[]> {
+  const config = useRuntimeConfig()
+  const orgSlug = config.helloassoOrganizationSlug
+  const formSlug = config.helloassoFormSlug
+
+  if (!orgSlug || !formSlug) {
+    throw ApiError.badRequest('HelloAsso organization or form slug not configured')
+  }
+
+  const allItems: HelloAssoItem[] = []
+  let continuationToken: string | undefined
+  const pageSize = 100
+  const maxPages = 50 // Safety limit
+
+  for (let page = 0; page < maxPages; page++) {
+    const params = new URLSearchParams({
+      pageSize: pageSize.toString(),
+      withDetails: 'true',
+    })
+
+    // Use continuationToken for subsequent pages, pageIndex only for first page
+    if (continuationToken) {
+      params.set('continuationToken', continuationToken)
+    } else {
+      params.set('pageIndex', '1')
+    }
+
+    const response = await helloassoFetch<HelloAssoPaginatedResponse<HelloAssoItem>>(
+      `/organizations/${orgSlug}/forms/Event/${formSlug}/items?${params}`
+    )
+
+    allItems.push(...response.data)
+
+    // Stop if no more pages
+    if (!response.pagination.continuationToken || response.data.length === 0) {
+      break
+    }
+
+    continuationToken = response.pagination.continuationToken
+  }
+
+  return allItems
 }

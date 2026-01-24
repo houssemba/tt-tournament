@@ -35,6 +35,23 @@ const categoryChartData = computed(() => {
   }
 })
 
+// Club bar chart data
+const clubChartData = computed(() => {
+  if (!stats.value || !stats.value.byClub) return null
+
+  return {
+    labels: stats.value.byClub.map(c => c.club),
+    datasets: [
+      {
+        label: 'Joueurs',
+        data: stats.value.byClub.map(c => c.count),
+        backgroundColor: '#3B82F6',
+        borderRadius: 4,
+      },
+    ],
+  }
+})
+
 // Timeline line chart data
 const timelineChartData = computed(() => {
   if (!stats.value) return null
@@ -150,14 +167,26 @@ useHead({
           :value="stats.totalPlayers"
         />
 
-        <!-- Category pie chart -->
-        <ChartContainer
-          v-if="categoryChartData"
-          type="pie"
-          :data="categoryChartData"
-          title="Répartition par catégorie"
-          :aspect-ratio="1.5"
-        />
+        <!-- Charts grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Category pie chart -->
+          <ChartContainer
+            v-if="categoryChartData"
+            type="pie"
+            :data="categoryChartData"
+            title="Répartition par catégorie"
+            :aspect-ratio="1.5"
+          />
+
+          <!-- Club bar chart -->
+          <ChartContainer
+            v-if="clubChartData"
+            type="bar"
+            :data="clubChartData"
+            title="Top 10 des clubs"
+            :aspect-ratio="1.5"
+          />
+        </div>
 
         <!-- Timeline chart (full width) -->
         <ChartContainer

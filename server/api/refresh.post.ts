@@ -2,67 +2,120 @@
 
 import type { Player, CategoryId } from '~/types/player'
 import type { RefreshResponse, PlayersResponse } from '~/types/stats'
-import type { HelloAssoOrder, HelloAssoItem } from '~/types/helloasso'
-import { getOrders } from '~/server/utils/helloasso'
+import type { HelloAssoItem } from '~/types/helloasso'
+import { getItems } from '~/server/utils/helloasso'
 import { deleteMultipleFromCache, CACHE_KEYS, getFromCache, setInCache } from '~/server/utils/cache'
 import { ApiError } from '~/server/utils/errors'
 import { matchCategory } from '~/utils/constants'
 import { cleanLicenseNumber } from '~/utils/validators'
 
-const RATE_LIMIT_TTL = 1 // 1 minute rate limit
+const RATE_LIMIT_TTL = 60 // 1 minute rate limit
 const RATE_LIMIT_KEY = 'refresh_rate_limit'
 
-const LICENSE_FIELD_NAMES = ['licence', 'numéro de licence', 'n° licence', 'license']
+const INFO_ITEM_NAME = 'obligatoire - informations complémentaires'
 
 interface RateLimitEntry {
   timestamp: number
 }
 
-function findLicenseNumber(item: HelloAssoItem): string | null {
-  for (const field of item.customFields || []) {
-    const fieldName = field.name.toLowerCase().trim()
-    if (LICENSE_FIELD_NAMES.some(name => fieldName.includes(name))) {
-      return cleanLicenseNumber(field.answer)
-    }
-  }
-  return null
+interface PlayerInfo {
+  oderId: number
+  firstName: string
+  lastName: string
+  email: string
+  date: string
+  licenseNumber: string | null
+  club: string | null
+  officialPoints: number | null
+  categories: CategoryId[]
 }
 
-function extractCategoriesFromOrder(order: HelloAssoOrder): CategoryId[] {
-  const categories: Set<CategoryId> = new Set()
+/**
+ * Group items by order ID and extract player info
+ */
+function extractPlayersFromItems(items: HelloAssoItem[]): Player[] {
+  // Group items by order ID
+  const orderMap = new Map<number, HelloAssoItem[]>()
 
-  for (const item of order.items || []) {
-    const categoryId = matchCategory(item.name)
-    if (categoryId) {
-      categories.add(categoryId)
+  for (const item of items) {
+    const orderId = item.order?.id
+    if (!orderId) continue
+
+    if (!orderMap.has(orderId)) {
+      orderMap.set(orderId, [])
+    }
+    orderMap.get(orderId)!.push(item)
+  }
+
+  // Process each order's items
+  const players: Player[] = []
+
+  for (const [orderId, orderItems] of orderMap) {
+    const playerInfo: PlayerInfo = {
+      oderId: orderId,
+      firstName: '',
+      lastName: '',
+      email: '',
+      date: '',
+      licenseNumber: null,
+      club: null,
+      officialPoints: null,
+      categories: [],
+    }
+
+    for (const item of orderItems) {
+      // Get payer info from item
+      if (item.payer) {
+        playerInfo.firstName = item.payer.firstName
+        playerInfo.lastName = item.payer.lastName
+        playerInfo.email = item.payer.email
+      }
+      if (item.order?.date) {
+        playerInfo.date = item.order.date
+      }
+
+      // Check if this is a category item
+      const categoryId = matchCategory(item.name)
+      if (categoryId) {
+        playerInfo.categories.push(categoryId)
+      }
+
+      // Check if this is the info item with custom fields
+      const itemName = item.name.toLowerCase().trim()
+      if (itemName.includes(INFO_ITEM_NAME) && item.customFields) {
+        for (const field of item.customFields) {
+          const fieldName = field.name.toLowerCase().trim()
+          const answer = field.answer?.trim() || ''
+
+          if (fieldName.includes('licence') || fieldName.includes('license')) {
+            playerInfo.licenseNumber = cleanLicenseNumber(answer)
+          } else if (fieldName.includes('club')) {
+            playerInfo.club = answer || null
+          } else if (fieldName.includes('points')) {
+            const points = parseInt(answer, 10)
+            playerInfo.officialPoints = isNaN(points) ? null : points
+          }
+        }
+      }
+    }
+
+    // Only create player if they have categories
+    if (playerInfo.categories.length > 0 && playerInfo.firstName) {
+      players.push({
+        id: orderId.toString(),
+        firstName: playerInfo.firstName,
+        lastName: playerInfo.lastName,
+        email: playerInfo.email,
+        licenseNumber: playerInfo.licenseNumber || '',
+        club: playerInfo.club,
+        officialPoints: playerInfo.officialPoints,
+        categories: playerInfo.categories,
+        registrationDate: new Date(playerInfo.date),
+      })
     }
   }
 
-  return Array.from(categories)
-}
-
-function extractPlayerFromOrder(order: HelloAssoOrder): Player | null {
-  const categories = extractCategoriesFromOrder(order)
-  if (categories.length === 0) {
-    return null
-  }
-
-  // Find license number from first item with custom fields
-  let licenseNumber: string | null = null
-  for (const item of order.items || []) {
-    licenseNumber = findLicenseNumber(item)
-    if (licenseNumber) break
-  }
-
-  return {
-    id: order.id.toString(),
-    firstName: order.payer.firstName,
-    lastName: order.payer.lastName,
-    email: order.payer.email,
-    licenseNumber: licenseNumber || '',
-    categories,
-    registrationDate: new Date(order.date),
-  }
+  return players
 }
 
 export default defineEventHandler(async (_event): Promise<RefreshResponse> => {
@@ -90,16 +143,11 @@ export default defineEventHandler(async (_event): Promise<RefreshResponse> => {
       CACHE_KEYS.STATS,
     ])
 
-    // Fetch orders from HelloAsso
-    const orders = await getOrders()
+    // Fetch items from HelloAsso (items include custom fields)
+    const items = await getItems()
 
-    console.log("foo")
-    console.log("orders", orders);
-
-    // Extract player data from orders
-    const players: Player[] = orders
-      .map(order => extractPlayerFromOrder(order))
-      .filter((p): p is Player => p !== null)
+    // Extract players from items
+    const players = extractPlayersFromItems(items)
 
     const playersResponse: PlayersResponse = {
       players,

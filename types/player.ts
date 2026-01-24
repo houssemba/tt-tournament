@@ -15,6 +15,8 @@ export interface Player {
   lastName: string
   email?: string
   licenseNumber: string
+  club: string | null
+  officialPoints: number | null
   categories: CategoryId[]
   registrationDate: Date
 }
