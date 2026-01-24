@@ -38,7 +38,6 @@ interface HelloAssoCustomField {
 interface HelloAssoPayer {
   firstName: string
   lastName: string
-  email: string
 }
 
 interface HelloAssoItem {
@@ -143,8 +142,7 @@ async function getAccessToken(env: Env): Promise<string> {
   })
 
   if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`HelloAsso auth error: ${errorText}`)
+    throw new Error(`HelloAsso auth failed with status ${response.status}`)
   }
 
   const data = await response.json() as HelloAssoTokenResponse
@@ -180,8 +178,7 @@ async function getItems(env: Env, accessToken: string): Promise<HelloAssoItem[]>
     )
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`HelloAsso API error: ${errorText}`)
+      throw new Error(`HelloAsso API failed with status ${response.status}`)
     }
 
     const data = await response.json() as HelloAssoPaginatedResponse<HelloAssoItem>
@@ -274,26 +271,7 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
   return players
 }
 
-function validateEnv(env: Env): void {
-  const required = [
-    'HELLOASSO_CLIENT_ID',
-    'HELLOASSO_CLIENT_SECRET',
-    'HELLOASSO_ORGANIZATION_SLUG',
-    'HELLOASSO_FORM_SLUG',
-  ] as const
-
-  const missing = required.filter(key => !env[key])
-
-  if (missing.length > 0) {
-    throw new Error(`Missing environment variables: ${missing.join(', ')}`)
-  }
-}
-
 async function refreshCache(env: Env): Promise<string> {
-  console.log('[Worker] Refreshing players cache...')
-
-  validateEnv(env)
-
   const accessToken = await getAccessToken(env)
   const items = await getItems(env, accessToken)
   const players = await extractPlayersFromItems(items)
@@ -314,26 +292,11 @@ async function refreshCache(env: Env): Promise<string> {
 
   await env.KV.put('players', JSON.stringify(cacheEntry))
 
-  console.log(`[Worker] Cache refreshed with ${players.length} players`)
   return `Refreshed ${players.length} players`
 }
 
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(refreshCache(env))
-  },
-
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    try {
-      const result = await refreshCache(env)
-      return new Response(JSON.stringify({ success: true, result }), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    } catch (error) {
-      return new Response(JSON.stringify({ success: false, error: String(error) }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
   },
 }

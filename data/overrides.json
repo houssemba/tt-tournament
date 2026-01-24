@@ -5,7 +5,11 @@
   },
   "99143eb6a2706a5a6f8d17ccce63cc72dd68e3af97922bc2f517e8bc5f4ba12a": {
       "licenseNumber": "123456",                                                        
-      "club": "TTHV",                                                                   
-      "officialPoints": 850 
+      "club": "TTHV"
+  },
+    "156454ead53ad8c98dba9a7c4746d6589ecfefdc0e0021b720fcb42565691507": {
+      "licenseNumber": "654321",                                                        
+      "club": "Vitre TT",                                                                   
+      "officialPoints": 650 
   }
 }
