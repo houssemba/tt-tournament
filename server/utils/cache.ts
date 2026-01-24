@@ -97,9 +97,37 @@ export async function deleteMultipleFromCache(keys: string[]): Promise<void> {
   }
 }
 
+/**
+ * Get a raw value from KV (no TTL wrapper)
+ * Used for data that should persist indefinitely
+ */
+export async function getRawFromCache<T>(key: string): Promise<T | null> {
+  try {
+    const storage = getStorage()
+    return await storage.getItem<T>(key)
+  } catch (error) {
+    console.error(`Cache get raw error for key ${key}:`, error)
+    return null
+  }
+}
+
+/**
+ * Set a raw value in KV (no TTL wrapper)
+ * Used for data that should persist indefinitely
+ */
+export async function setRawInCache<T>(key: string, value: T): Promise<void> {
+  try {
+    const storage = getStorage()
+    await storage.setItem(key, value)
+  } catch (error) {
+    console.error(`Cache set raw error for key ${key}:`, error)
+  }
+}
+
 // Cache key constants
 export const CACHE_KEYS = {
   PLAYERS: 'players',
   STATS: 'stats',
   HELLOASSO_TOKEN: 'helloasso_token',
+  OVERRIDES: 'overrides',
 }

@@ -2,8 +2,7 @@
 
 import type { Player } from '~/types/player'
 import type { PlayersResponse } from '~/types/stats'
-import { getFromCache, CACHE_KEYS } from '~/server/utils/cache'
-import overrides from '~/data/overrides.json'
+import { getFromCache, getRawFromCache, CACHE_KEYS } from '~/server/utils/cache'
 
 interface PlayerOverride {
   licenseNumber?: string
@@ -11,9 +10,14 @@ interface PlayerOverride {
   officialPoints?: number
 }
 
-function applyOverrides(players: Player[]): Player[] {
+async function getOverrides(): Promise<Record<string, PlayerOverride>> {
+  const overrides = await getRawFromCache<Record<string, PlayerOverride>>(CACHE_KEYS.OVERRIDES)
+  return overrides ?? {}
+}
+
+function applyOverrides(players: Player[], overrides: Record<string, PlayerOverride>): Player[] {
   return players.map(player => {
-    const override = (overrides as Record<string, PlayerOverride>)[player.id]
+    const override = overrides[player.id]
     if (!override) return player
 
     return {
@@ -29,9 +33,10 @@ export default defineEventHandler(async (_event): Promise<PlayersResponse> => {
   const cached = await getFromCache<PlayersResponse>(CACHE_KEYS.PLAYERS)
 
   if (cached) {
+    const overrides = await getOverrides()
     return {
       ...cached,
-      players: applyOverrides(cached.players),
+      players: applyOverrides(cached.players, overrides),
       fromCache: true,
     }
   }
