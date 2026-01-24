@@ -1,4 +1,4 @@
-name = "helloasso-refresh-worker"
+name = "tt-tournament"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
