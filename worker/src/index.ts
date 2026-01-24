@@ -149,7 +149,7 @@ async function getAccessToken(env: Env): Promise<string> {
   return data.access_token
 }
 
-async function getItems(env: Env, accessToken: string): Promise<HelloAssoItem[]> {
+async function getItems(env: Env, accessToken: string, retry = true): Promise<HelloAssoItem[]> {
   const allItems: HelloAssoItem[] = []
   let continuationToken: string | undefined
   const pageSize = 100
@@ -176,6 +176,12 @@ async function getItems(env: Env, accessToken: string): Promise<HelloAssoItem[]>
         },
       }
     )
+
+    // Retry with fresh token on 401/403
+    if ((response.status === 401 || response.status === 403) && retry) {
+      const newToken = await getAccessToken(env)
+      return getItems(env, newToken, false)
+    }
 
     if (!response.ok) {
       throw new Error(`HelloAsso API failed with status ${response.status}`)
