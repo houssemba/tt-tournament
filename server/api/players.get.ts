@@ -10,11 +10,6 @@ interface PlayerOverride {
   officialPoints?: number
 }
 
-async function getOverrides(): Promise<Record<string, PlayerOverride>> {
-  const overrides = await getRawFromCache<Record<string, PlayerOverride>>(CACHE_KEYS.OVERRIDES)
-  return overrides ?? {}
-}
-
 function applyOverrides(players: Player[], overrides: Record<string, PlayerOverride>): Player[] {
   return players.map(player => {
     const override = overrides[player.id]
@@ -33,7 +28,7 @@ export default defineEventHandler(async (_event): Promise<PlayersResponse> => {
   const cached = await getFromCache<PlayersResponse>(CACHE_KEYS.PLAYERS)
 
   if (cached) {
-    const overrides = await getOverrides()
+    const overrides = await getRawFromCache<Record<string, PlayerOverride>>(CACHE_KEYS.OVERRIDES) ?? {}
     return {
       ...cached,
       players: applyOverrides(cached.players, overrides),

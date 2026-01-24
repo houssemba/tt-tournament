@@ -1,17 +1,9 @@
-// Cloudflare KV cache utilities using Nitro's useStorage
+// Cloudflare KV cache utilities using NuxtHub's hubKV
 
 interface CacheEntry<T> {
   data: T
   timestamp: number
   ttl: number
-}
-
-/**
- * Get storage instance - uses KV in production, memory in development
- */
-function getStorage() {
-  // In NuxtHub, the 'kv' storage is automatically configured
-  return useStorage('kv')
 }
 
 /**
@@ -21,8 +13,8 @@ function getStorage() {
  */
 export async function getFromCache<T>(key: string): Promise<T | null> {
   try {
-    const storage = getStorage()
-    const entry = await storage.getItem<CacheEntry<T>>(key)
+    const kv = hubKV()
+    const entry = await kv.get<CacheEntry<T>>(key)
 
     if (!entry) {
       return null
@@ -32,8 +24,7 @@ export async function getFromCache<T>(key: string): Promise<T | null> {
     const isExpired = now - entry.timestamp > entry.ttl * 1000
 
     if (isExpired) {
-      // Clean up expired entry
-      await storage.removeItem(key)
+      await kv.del(key)
       return null
     }
 
@@ -56,17 +47,16 @@ export async function setInCache<T>(
   ttlSeconds: number
 ): Promise<void> {
   try {
-    const storage = getStorage()
+    const kv = hubKV()
     const entry: CacheEntry<T> = {
       data: value,
       timestamp: Date.now(),
       ttl: ttlSeconds,
     }
 
-    await storage.setItem(key, entry)
+    await kv.set(key, entry)
   } catch (error) {
     console.error(`Cache set error for key ${key}:`, error)
-    // Don't throw - caching is best-effort
   }
 }
 
@@ -76,51 +66,34 @@ export async function setInCache<T>(
  */
 export async function deleteFromCache(key: string): Promise<void> {
   try {
-    const storage = getStorage()
-    await storage.removeItem(key)
+    const kv = hubKV()
+    await kv.del(key)
   } catch (error) {
     console.error(`Cache delete error for key ${key}:`, error)
-    // Don't throw - cache deletion is best-effort
-  }
-}
-
-/**
- * Delete multiple keys from cache
- * @param keys - Array of cache keys
- */
-export async function deleteMultipleFromCache(keys: string[]): Promise<void> {
-  try {
-    const storage = getStorage()
-    await Promise.all(keys.map(key => storage.removeItem(key)))
-  } catch (error) {
-    console.error('Cache delete multiple error:', error)
   }
 }
 
 /**
  * Get a raw value from KV (no TTL wrapper)
- * Used for data that should persist indefinitely
  */
 export async function getRawFromCache<T>(key: string): Promise<T | null> {
   try {
-    const storage = getStorage()
-    return await storage.getItem<T>(key)
-  } catch (error) {
-    console.error(`Cache get raw error for key ${key}:`, error)
+    const kv = hubKV()
+    return await kv.get<T>(key)
+  } catch {
     return null
   }
 }
 
 /**
  * Set a raw value in KV (no TTL wrapper)
- * Used for data that should persist indefinitely
  */
 export async function setRawInCache<T>(key: string, value: T): Promise<void> {
   try {
-    const storage = getStorage()
-    await storage.setItem(key, value)
-  } catch (error) {
-    console.error(`Cache set raw error for key ${key}:`, error)
+    const kv = hubKV()
+    await kv.set(key, value)
+  } catch {
+    // ignore
   }
 }
 
