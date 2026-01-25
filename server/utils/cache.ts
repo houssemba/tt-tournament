@@ -8,8 +8,6 @@ interface CacheEntry<T> {
 
 /**
  * Get a value from cache
- * @param key - Cache key
- * @returns The cached value or null if not found or expired
  */
 export async function getFromCache<T>(key: string): Promise<T | null> {
   try {
@@ -29,17 +27,13 @@ export async function getFromCache<T>(key: string): Promise<T | null> {
     }
 
     return entry.data
-  } catch (error) {
-    console.error(`Cache get error for key ${key}:`, error)
+  } catch {
     return null
   }
 }
 
 /**
  * Set a value in cache
- * @param key - Cache key
- * @param value - Value to cache
- * @param ttlSeconds - Time to live in seconds
  */
 export async function setInCache<T>(
   key: string,
@@ -55,21 +49,20 @@ export async function setInCache<T>(
     }
 
     await kv.set(key, entry)
-  } catch (error) {
-    console.error(`Cache set error for key ${key}:`, error)
+  } catch {
+    // ignore
   }
 }
 
 /**
  * Delete a value from cache
- * @param key - Cache key
  */
 export async function deleteFromCache(key: string): Promise<void> {
   try {
     const kv = hubKV()
     await kv.del(key)
-  } catch (error) {
-    console.error(`Cache delete error for key ${key}:`, error)
+  } catch {
+    // ignore
   }
 }
 
