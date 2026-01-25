@@ -14,7 +14,7 @@ export function useStats() {
     error.value = null
 
     try {
-      const response = await $fetch<StatsResponse>('/api/stats')
+      const response = await $fetch('/api/stats') as StatsResponse
 
       stats.value = {
         ...response.stats,

@@ -86,8 +86,8 @@ export default defineEventHandler(async (_event): Promise<StatsResponse> => {
       }))
     } else {
       // Fetch fresh players data via internal API call
-      const playersResponse = await $fetch<PlayersResponse>('/api/players')
-      players = playersResponse.players.map(p => ({
+      const playersResponse = await $fetch('/api/players') as PlayersResponse
+      players = playersResponse.players.map((p: Player & { registrationDate: string | Date }) => ({
         ...p,
         registrationDate: new Date(p.registrationDate),
       }))

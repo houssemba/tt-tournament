@@ -1,4 +1,6 @@
-// Cloudflare KV cache utilities using NuxtHub's hubKV
+// Cloudflare KV cache utilities using NuxtHub's kv
+import { kv } from 'hub:kv'
+import type { StorageValue } from 'unstorage'
 
 interface CacheEntry<T> {
   data: T
@@ -11,7 +13,6 @@ interface CacheEntry<T> {
  */
 export async function getFromCache<T>(key: string): Promise<T | null> {
   try {
-    const kv = hubKV()
     const entry = await kv.get<CacheEntry<T>>(key)
 
     if (!entry) {
@@ -41,7 +42,6 @@ export async function setInCache<T>(
   ttlSeconds: number
 ): Promise<void> {
   try {
-    const kv = hubKV()
     const entry: CacheEntry<T> = {
       data: value,
       timestamp: Date.now(),
@@ -59,7 +59,6 @@ export async function setInCache<T>(
  */
 export async function deleteFromCache(key: string): Promise<void> {
   try {
-    const kv = hubKV()
     await kv.del(key)
   } catch {
     // ignore
@@ -71,7 +70,6 @@ export async function deleteFromCache(key: string): Promise<void> {
  */
 export async function getRawFromCache<T>(key: string): Promise<T | null> {
   try {
-    const kv = hubKV()
     return await kv.get<T>(key)
   } catch {
     return null
@@ -81,9 +79,8 @@ export async function getRawFromCache<T>(key: string): Promise<T | null> {
 /**
  * Set a raw value in KV (no TTL wrapper)
  */
-export async function setRawInCache<T>(key: string, value: T): Promise<void> {
+export async function setRawInCache<T extends StorageValue>(key: string, value: T): Promise<void> {
   try {
-    const kv = hubKV()
     await kv.set(key, value)
   } catch {
     // ignore

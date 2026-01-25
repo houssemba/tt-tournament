@@ -49,9 +49,9 @@ export function usePlayers() {
     warning.value = null
 
     try {
-      const response = await $fetch<PlayersResponse>('/api/players')
+      const response = await $fetch('/api/players') as PlayersResponse
 
-      players.value = response.players.map(p => ({
+      players.value = response.players.map((p: Player & { registrationDate: string | Date }) => ({
         ...p,
         registrationDate: new Date(p.registrationDate),
       }))
