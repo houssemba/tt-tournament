@@ -213,7 +213,7 @@ useHead({
     <footer class="bg-white border-t border-gray-200 mt-auto">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <a href="mailto:contact@tt-hautevilaine.com" class="block text-center text-sm text-gray-500 hover:text-primary-600 transition-colors">
-          Made with <span class="text-red-500">&#10084;</span> by Houssem for the TTHV
+          Made with <span class="text-red-500">&#10084;</span> for the TTHV
         </a>
       </div>
     </footer>
