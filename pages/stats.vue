@@ -52,28 +52,6 @@ const clubChartData = computed(() => {
   }
 })
 
-// Timeline line chart data
-const timelineChartData = computed(() => {
-  if (!stats.value) return null
-
-  return {
-    labels: stats.value.registrationTimeline.map(t => {
-      const date = new Date(t.date)
-      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
-    }),
-    datasets: [
-      {
-        label: 'Inscriptions',
-        data: stats.value.registrationTimeline.map(t => t.count),
-        borderColor: '#3B82F6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        fill: true,
-        tension: 0.3,
-      },
-    ],
-  }
-})
-
 useHead({
   title: 'Statistiques - Tournoi Haute Vilaine Acigné',
   meta: [
@@ -198,14 +176,6 @@ useHead({
           />
         </div>
 
-        <!-- Timeline chart (full width) -->
-        <ChartContainer
-          v-if="timelineChartData"
-          type="line"
-          :data="timelineChartData"
-          title="Évolution des inscriptions"
-          :aspect-ratio="3"
-        />
       </div>
     </main>
 

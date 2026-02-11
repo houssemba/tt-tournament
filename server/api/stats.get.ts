@@ -1,7 +1,7 @@
 // GET /api/stats - Get tournament statistics
 
 import type { Player, CategoryId } from '~/types/player'
-import type { TournamentStats, StatsResponse, CategoryCount, ClubCount, DailyCount, PlayersResponse } from '~/types/stats'
+import type { TournamentStats, StatsResponse, CategoryCount, ClubCount, PlayersResponse } from '~/types/stats'
 import { getFromCache, setInCache, CACHE_KEYS } from '~/server/utils/cache'
 import { ApiError } from '~/server/utils/errors'
 import { CATEGORIES } from '~/utils/constants'
@@ -39,24 +39,11 @@ function computeStats(players: Player[]): TournamentStats {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
 
-  // Registration timeline (by day)
-  const timelineMap = new Map<string, number>()
-  for (const player of players) {
-    const date = new Date(player.registrationDate)
-    const dateKey = date.toISOString().split('T')[0]
-    const current = timelineMap.get(dateKey) ?? 0
-    timelineMap.set(dateKey, current + 1)
-  }
-
-  const registrationTimeline: DailyCount[] = Array.from(timelineMap.entries())
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-
   return {
     totalPlayers: players.length,
     byCategory,
     byClub,
-    registrationTimeline,
+    registrationTimeline: [],
     lastUpdated: new Date(),
   }
 }
