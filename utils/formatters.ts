@@ -78,13 +78,13 @@ export function formatPoints(points: number | null): string {
 }
 
 /**
- * Format club name for display
+ * Format club name for display (uppercase)
  * @param club - The club name (can be null)
- * @returns Formatted club string
+ * @returns Formatted club string in uppercase
  */
 export function formatClub(club: string | null): string {
   if (!club) {
     return 'Club inconnu'
   }
-  return club
+  return club.toUpperCase()
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Player } from '~/types/player'
 import type { SortKey } from '~/composables/useSort'
-import { formatPlayerName, formatDate, formatPoints, formatClub } from '~/utils/formatters'
+import { formatPlayerName, formatPoints, formatClub } from '~/utils/formatters'
 
 interface Props {
   players: Player[]
@@ -24,7 +24,6 @@ const columns: ColumnConfig[] = [
   { key: 'lastName', label: 'Nom' },
   { key: 'club', label: 'Club' },
   { key: 'officialPoints', label: 'Points' },
-  { key: 'registrationDate', label: 'Inscription' },
 ]
 
 function getSortIcon(key: SortKey): string {
@@ -98,11 +97,6 @@ function getSortIcon(key: SortKey): string {
           <td class="px-4 py-3 whitespace-nowrap">
             <span class="text-sm text-gray-600">
               {{ formatPoints(player.officialPoints) }}
-            </span>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <span class="text-sm text-gray-500">
-              {{ formatDate(player.registrationDate) }}
             </span>
           </td>
         </tr>

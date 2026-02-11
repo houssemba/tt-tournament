@@ -38,6 +38,7 @@ interface HelloAssoCustomField {
 interface HelloAssoPayer {
   firstName: string
   lastName: string
+  email?: string
 }
 
 interface HelloAssoItem {
@@ -119,13 +120,6 @@ function cleanLicenseNumber(licenseNumber: string): string | null {
   const cleaned = licenseNumber.replace(/[\s-]/g, '')
   if (!/^\d{6,7}$/.test(cleaned)) return null
   return cleaned
-}
-
-async function hashOrderId(orderId: number): Promise<string> {
-  const data = new TextEncoder().encode(String(orderId))
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
 interface TokenCache {
@@ -235,22 +229,30 @@ async function getItems(env: Env, accessToken: string, retry = true): Promise<He
   return allItems
 }
 
+async function hashEmail(email: string): Promise<string> {
+  const data = new TextEncoder().encode(email.toLowerCase().trim())
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]> {
-  const orderMap = new Map<number, HelloAssoItem[]>()
+  // Group items by payer email to handle multiple orders from the same person
+  const emailMap = new Map<string, HelloAssoItem[]>()
 
   for (const item of items) {
-    const orderId = item.order?.id
-    if (!orderId) continue
+    const email = item.payer?.email?.toLowerCase().trim()
+    if (!email) continue
 
-    if (!orderMap.has(orderId)) {
-      orderMap.set(orderId, [])
+    if (!emailMap.has(email)) {
+      emailMap.set(email, [])
     }
-    orderMap.get(orderId)!.push(item)
+    emailMap.get(email)!.push(item)
   }
 
   const players: Player[] = []
 
-  for (const [orderId, orderItems] of orderMap) {
+  for (const [email, emailItems] of emailMap) {
     const playerInfo: PlayerInfo = {
       firstName: '',
       lastName: '',
@@ -261,31 +263,45 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
       categories: [],
     }
 
-    for (const item of orderItems) {
-      if (item.payer) {
+    // Track earliest registration date
+    let earliestDate: Date | null = null
+
+    for (const item of emailItems) {
+      // Get payer info (use the first one we find)
+      if (item.payer && !playerInfo.firstName) {
         playerInfo.firstName = item.payer.firstName
         playerInfo.lastName = item.payer.lastName
       }
+
+      // Track earliest registration date
       if (item.order?.date) {
-        playerInfo.date = item.order.date
+        const itemDate = new Date(item.order.date)
+        if (!earliestDate || itemDate < earliestDate) {
+          earliestDate = itemDate
+          playerInfo.date = item.order.date
+        }
       }
 
+      // Collect all categories from all orders
       const categoryId = matchCategory(item.name)
-      if (categoryId) {
+      if (categoryId && !playerInfo.categories.includes(categoryId)) {
         playerInfo.categories.push(categoryId)
       }
 
+      // Get supplementary info from any order that has it
       const itemName = item.name.toLowerCase().trim()
       if (itemName.includes(INFO_ITEM_NAME) && item.customFields) {
         for (const field of item.customFields) {
           const fieldName = field.name.toLowerCase().trim()
           const answer = field.answer?.trim() || ''
 
-          if (fieldName.includes('licence') || fieldName.includes('license')) {
+          // Only update if we don't have the info yet
+          if ((fieldName.includes('licence') || fieldName.includes('license')) && !playerInfo.licenseNumber) {
             playerInfo.licenseNumber = cleanLicenseNumber(answer)
-          } else if (fieldName.includes('club')) {
-            playerInfo.club = answer || null
-          } else if (fieldName.includes('points')) {
+          } else if (fieldName.includes('club') && !playerInfo.club) {
+            // Normalize club name to uppercase for consistent grouping in stats
+            playerInfo.club = answer ? answer.toUpperCase().trim() : null
+          } else if (fieldName.includes('points') && playerInfo.officialPoints === null) {
             const points = parseInt(answer, 10)
             playerInfo.officialPoints = isNaN(points) ? null : points
           }
@@ -294,7 +310,8 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
     }
 
     if (playerInfo.categories.length > 0 && playerInfo.firstName) {
-      const playerId = await hashOrderId(orderId)
+      // Use email hash as player ID for consistency across orders
+      const playerId = await hashEmail(email)
 
       players.push({
         id: playerId,
