@@ -102,7 +102,9 @@ const CATEGORY_PATTERNS: { id: CategoryId; pattern: RegExp }[] = [
   { id: 'tc-feminin', pattern: /f[eé]minin|tc\s*f|women/i },
 ]
 
-const INFO_ITEM_NAME = 'obligatoire - informations complémentaires'
+// Legacy format used a separate product named 'obligatoire - informations complémentaires'
+// New format has custom fields directly on each product (tableau)
+// Both formats are supported by extracting customFields from any item
 const HELLOASSO_AUTH_URL = 'https://api.helloasso.com/oauth2/token'
 const HELLOASSO_API_BASE = 'https://api.helloasso.com/v5'
 
@@ -288,14 +290,14 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
         playerInfo.categories.push(categoryId)
       }
 
-      // Get supplementary info from any order that has it
-      const itemName = item.name.toLowerCase().trim()
-      if (itemName.includes(INFO_ITEM_NAME) && item.customFields) {
+      // Extract custom fields from any item that has them
+      // Works with both: new format (fields on each product) and old format (separate "informations complémentaires" product)
+      if (item.customFields) {
         for (const field of item.customFields) {
           const fieldName = field.name.toLowerCase().trim()
           const answer = field.answer?.trim() || ''
 
-          // Only update if we don't have the info yet
+          // Only update if we don't have the info yet (first item wins)
           if ((fieldName.includes('licence') || fieldName.includes('license')) && !playerInfo.licenseNumber) {
             playerInfo.licenseNumber = cleanLicenseNumber(answer)
           } else if (fieldName.includes('club') && !playerInfo.club) {
