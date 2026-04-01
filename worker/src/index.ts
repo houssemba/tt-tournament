@@ -276,6 +276,11 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
   // while a single participant with multiple tableau items is correctly merged into one.
   const participantMap = new Map<string, HelloAssoItem[]>()
 
+  // Track payer email → license keys to enable a merge pass afterwards.
+  // Used to fix the case where the same participant made multiple orders and only
+  // provided their license in some of them.
+  const payerToLicenseKeys = new Map<string, Set<string>>()
+
   for (const item of items) {
     // Priority 1: participant email (item.user is the actual beneficiary, not the payer)
     const participantEmail = item.user?.email?.toLowerCase().trim()
@@ -304,6 +309,13 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
       const key = `license:${licenseNumber}`
       if (!participantMap.has(key)) participantMap.set(key, [])
       participantMap.get(key)!.push(item)
+
+      // Record payer → license association for the merge pass below
+      const payerEmail = item.payer?.email?.toLowerCase().trim()
+      if (payerEmail) {
+        if (!payerToLicenseKeys.has(payerEmail)) payerToLicenseKeys.set(payerEmail, new Set())
+        payerToLicenseKeys.get(payerEmail)!.add(key)
+      }
       continue
     }
 
@@ -314,6 +326,21 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
     const key = `payer:${payerEmail}`
     if (!participantMap.has(key)) participantMap.set(key, [])
     participantMap.get(key)!.push(item)
+  }
+
+  // Merge pass: fold payer: groups into their matching license: group when unambiguous.
+  // Scenario: participant made two orders, provided license only in the first one.
+  // - Exactly 1 license key for this payer → safe to merge (same participant)
+  // - 2+ license keys for this payer → payer registered multiple people → keep separate
+  for (const [key, groupItems] of [...participantMap.entries()]) {
+    if (!key.startsWith('payer:')) continue
+    const payerEmail = key.slice('payer:'.length)
+    const licenseKeys = payerToLicenseKeys.get(payerEmail)
+    if (licenseKeys?.size === 1) {
+      const licenseKey = [...licenseKeys][0]
+      participantMap.get(licenseKey)!.push(...groupItems)
+      participantMap.delete(key)
+    }
   }
 
   const players: Player[] = []
