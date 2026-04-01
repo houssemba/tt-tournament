@@ -247,12 +247,33 @@ async function hashEmail(email: string): Promise<string> {
 }
 
 async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]> {
+  // Pre-process: build a per-order license map to support the legacy format where
+  // licence/club/points lived on a separate "obligatoire - informations complémentaires"
+  // item rather than on each tableau item directly.
+  // Without this, the "obligatoire" item (which has a licence) and the tableau item
+  // (which has no customFields) would end up grouped separately and both be discarded.
+  const orderLicenseMap = new Map<number, string>()
+  for (const item of items) {
+    if (!item.order?.id || !item.customFields) continue
+    for (const field of item.customFields) {
+      const fieldName = field.name.toLowerCase().trim()
+      if (fieldName.includes('licence') || fieldName.includes('license')) {
+        const license = cleanLicenseNumber(field.answer?.trim() || '')
+        if (license && !orderLicenseMap.has(item.order.id)) {
+          orderLicenseMap.set(item.order.id, license)
+        }
+        break
+      }
+    }
+  }
+
   // Group items by participant identity using the following priority:
   // 1. item.user.email  — HelloAsso provides a distinct participant when someone pays for others
-  // 2. License number from custom fields — reliable unique identifier per player
+  // 2. License number — from item's own customFields, or from order-level (legacy format)
   // 3. item.payer.email — fallback for self-registrations with no license
   //
-  // This ensures that a single payer registering N participants creates N separate records.
+  // This ensures that a single payer registering N participants creates N separate records,
+  // while a single participant with multiple tableau items is correctly merged into one.
   const participantMap = new Map<string, HelloAssoItem[]>()
 
   for (const item of items) {
@@ -265,7 +286,7 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
       continue
     }
 
-    // Priority 2: license number extracted from custom fields
+    // Priority 2: license from item's own customFields, then order-level fallback (legacy)
     let licenseNumber: string | null = null
     if (item.customFields) {
       for (const field of item.customFields) {
@@ -275,6 +296,9 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
           break
         }
       }
+    }
+    if (!licenseNumber && item.order?.id) {
+      licenseNumber = orderLicenseMap.get(item.order.id) ?? null
     }
     if (licenseNumber) {
       const key = `license:${licenseNumber}`
