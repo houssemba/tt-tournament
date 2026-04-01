@@ -41,6 +41,13 @@ interface HelloAssoPayer {
   email?: string
 }
 
+// The actual participant (may differ from payer when someone pays for others)
+interface HelloAssoParticipant {
+  firstName: string
+  lastName: string
+  email?: string
+}
+
 interface HelloAssoItem {
   id: number
   name: string
@@ -50,6 +57,7 @@ interface HelloAssoItem {
   type: string
   state: string
   payer?: HelloAssoPayer
+  user?: HelloAssoParticipant
   order?: {
     id: number
     date: string
@@ -239,22 +247,54 @@ async function hashEmail(email: string): Promise<string> {
 }
 
 async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]> {
-  // Group items by payer email to handle multiple orders from the same person
-  const emailMap = new Map<string, HelloAssoItem[]>()
+  // Group items by participant identity using the following priority:
+  // 1. item.user.email  — HelloAsso provides a distinct participant when someone pays for others
+  // 2. License number from custom fields — reliable unique identifier per player
+  // 3. item.payer.email — fallback for self-registrations with no license
+  //
+  // This ensures that a single payer registering N participants creates N separate records.
+  const participantMap = new Map<string, HelloAssoItem[]>()
 
   for (const item of items) {
-    const email = item.payer?.email?.toLowerCase().trim()
-    if (!email) continue
-
-    if (!emailMap.has(email)) {
-      emailMap.set(email, [])
+    // Priority 1: participant email (item.user is the actual beneficiary, not the payer)
+    const participantEmail = item.user?.email?.toLowerCase().trim()
+    if (participantEmail) {
+      const key = `user:${participantEmail}`
+      if (!participantMap.has(key)) participantMap.set(key, [])
+      participantMap.get(key)!.push(item)
+      continue
     }
-    emailMap.get(email)!.push(item)
+
+    // Priority 2: license number extracted from custom fields
+    let licenseNumber: string | null = null
+    if (item.customFields) {
+      for (const field of item.customFields) {
+        const fieldName = field.name.toLowerCase().trim()
+        if (fieldName.includes('licence') || fieldName.includes('license')) {
+          licenseNumber = cleanLicenseNumber(field.answer?.trim() || '')
+          break
+        }
+      }
+    }
+    if (licenseNumber) {
+      const key = `license:${licenseNumber}`
+      if (!participantMap.has(key)) participantMap.set(key, [])
+      participantMap.get(key)!.push(item)
+      continue
+    }
+
+    // Priority 3: payer email (self-registration without license)
+    const payerEmail = item.payer?.email?.toLowerCase().trim()
+    if (!payerEmail) continue
+
+    const key = `payer:${payerEmail}`
+    if (!participantMap.has(key)) participantMap.set(key, [])
+    participantMap.get(key)!.push(item)
   }
 
   const players: Player[] = []
 
-  for (const [email, emailItems] of emailMap) {
+  for (const [key, groupItems] of participantMap) {
     const playerInfo: PlayerInfo = {
       firstName: '',
       lastName: '',
@@ -265,14 +305,16 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
       categories: [],
     }
 
-    // Track earliest registration date
     let earliestDate: Date | null = null
 
-    for (const item of emailItems) {
-      // Get payer info (use the first one we find)
-      if (item.payer && !playerInfo.firstName) {
-        playerInfo.firstName = item.payer.firstName
-        playerInfo.lastName = item.payer.lastName
+    for (const item of groupItems) {
+      // Use participant name (item.user) when available, else fall back to payer
+      if (!playerInfo.firstName) {
+        const person = item.user ?? item.payer
+        if (person) {
+          playerInfo.firstName = person.firstName
+          playerInfo.lastName = person.lastName
+        }
       }
 
       // Track earliest registration date
@@ -284,7 +326,7 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
         }
       }
 
-      // Collect all categories from all orders
+      // Collect all categories from all orders for this participant
       const categoryId = matchCategory(item.name)
       if (categoryId && !playerInfo.categories.includes(categoryId)) {
         playerInfo.categories.push(categoryId)
@@ -312,8 +354,8 @@ async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]
     }
 
     if (playerInfo.categories.length > 0 && playerInfo.firstName) {
-      // Use email hash as player ID for consistency across orders
-      const playerId = await hashEmail(email)
+      // Hash the grouping key as the player ID — never store raw email or license as ID
+      const playerId = await hashEmail(key)
 
       players.push({
         id: playerId,
