@@ -247,9 +247,11 @@ async function hashEmail(email: string): Promise<string> {
 }
 
 async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]> {
-  // Discard items that are not in a confirmed state (canceled, refunded, etc.)
-  const VALID_STATES = new Set(['Paid', 'Registered'])
-  items = items.filter(item => VALID_STATES.has(item.state))
+  // Discard items that are explicitly canceled or refunded.
+  // Using a denylist (not allowlist) so that unknown states are kept,
+  // avoiding accidental data loss if HelloAsso adds new valid state values.
+  const CANCELED_STATES = new Set(['canceled', 'refunded', 'refused'])
+  items = items.filter(item => !CANCELED_STATES.has(item.state?.toLowerCase()))
 
   // Pre-process: build a per-order license map to support the legacy format where
   // licence/club/points lived on a separate "obligatoire - informations complémentaires"
