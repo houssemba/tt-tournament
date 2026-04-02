@@ -247,6 +247,10 @@ async function hashEmail(email: string): Promise<string> {
 }
 
 async function extractPlayersFromItems(items: HelloAssoItem[]): Promise<Player[]> {
+  // Discard items that are not in a confirmed state (canceled, refunded, etc.)
+  const VALID_STATES = new Set(['Paid', 'Registered'])
+  items = items.filter(item => VALID_STATES.has(item.state))
+
   // Pre-process: build a per-order license map to support the legacy format where
   // licence/club/points lived on a separate "obligatoire - informations complémentaires"
   // item rather than on each tableau item directly.
